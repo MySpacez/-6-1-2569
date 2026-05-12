@@ -33,26 +33,19 @@ const MEMBERS = [
 ];
 
 const WEEKS = Array.from({ length: 34 }, (_, i) => i + 1);
-const KEY = "rfs_v7";
+const KEY = "rfs_final_v1";
 const S = { U: "u", P: "p", L: "l", E: "e" };
 const CYCLE = { u: "p", p: "l", l: "e", e: "u" };
 const COLOR = { p: "#16a34a", l: "#dc2626", e: "#2563eb", u: "#94a3b8" };
 const BG = { p: "#dcfce7", l: "#fee2e2", e: "#dbeafe", u: "#f8fafc" };
 const ICON = { p: "✓", l: "฿", e: "~", u: "" };
-const LABEL = { p: "ชำระแล้ว ฿10", l: "ค้างชำระ ฿15", e: "ยกเว้น", u: "ยังไม่ชำระ" };
 
 export default function App() {
   const [pay, setPay] = useState({});
   const [view, setView] = useState("admin");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [passInput, setPassInput] = useState("");
-  const [passErr, setPassErr] = useState("");
   const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState(null);
-  const [toast, setToast] = useState(null);
 
-  // ดึงข้อมูลเมื่อโหลดหน้า
   useEffect(() => {
     const d = localStorage.getItem(KEY);
     if (d) {
@@ -63,164 +56,104 @@ export default function App() {
     }
   }, []);
 
-  // บันทึกข้อมูลเมื่อมีการเปลี่ยนแปลง
   useEffect(() => {
     if (Object.keys(pay).length > 0) {
       localStorage.setItem(KEY, JSON.stringify({ key: KEY, pay }));
     }
   }, [pay]);
 
-  function notify(text, err) {
-    setToast({ text, err });
-    setTimeout(() => setToast(null), 2500);
-  }
-
-  function login() {
-    if (passInput === "admin1234") {
-      setIsAdmin(true); setShowLogin(false); setPassInput(""); setPassErr("");
-      notify("เข้าระบบแอดมินแล้ว");
-    } else {
-      setPassErr("รหัสผ่านไม่ถูกต้อง");
-    }
-  }
-
-  function reset() {
-    if (!window.confirm("ล้างข้อมูลทั้งหมดและเริ่มใหม่?")) return;
-    setPay({});
-    localStorage.removeItem(KEY);
-    notify("รีเซ็ตเรียบร้อย");
-  }
-
-  function toggle(id, week) {
+  const toggle = (id, w) => {
     if (!isAdmin) return;
     setPay(prev => ({
       ...prev,
-      [id]: { ...prev[id], [week]: CYCLE[prev[id]?.[week] || S.U] }
+      [id]: { ...prev[id], [w]: CYCLE[prev[id]?.[w] || S.U] }
     }));
-  }
-
-  const stats = useMemo(() => MEMBERS.map(m => {
-    let paid = 0, late = 0, exempt = 0, unpaid = 0, owed = 0, got = 0;
-    WEEKS.forEach(w => {
-      const s = pay[m.id]?.[w] || S.U;
-      if (s === S.P) { paid++; got += 10; }
-      if (s === S.L) { late++; got += 15; owed += 15; }
-      if (s === S.E) { exempt++; }
-      if (s === S.U) { unpaid++; owed += 10; }
-    });
-    return { ...m, paid, late, exempt, unpaid, owed, got };
-  }), [pay]);
-
-  const totals = stats.reduce((a, m) => ({ got: a.got + m.got, owed: a.owed + m.owed }), { got: 0, owed: 0 });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim();
-    if (!q) return stats;
-    return stats.filter(m =>
-      m.name.includes(q) || m.surname.includes(q) ||
-      m.nickname.includes(q) || m.id.includes(q) || String(m.num) === q
+    if (!q) return MEMBERS;
+    return MEMBERS.filter(m =>
+      m.name.includes(q) || m.nickname.includes(q) || m.id.includes(q)
     );
-  }, [stats, search]);
-
-  const pickedM = picked ? stats.find(m => m.id === picked) : null;
-
-  const ibtn = (c, extra) => ({ padding: "5px 12px", borderRadius: 7, border: `1px solid ${c}`, background: "transparent", color: c, cursor: "pointer", fontSize: 12, fontWeight: 700, ...extra });
-  const inp = { padding: "8px 12px", borderRadius: 8, border: "1px solid #334155", background: "#0f172a", color: "#f8fafc", fontSize: 13, outline: "none", boxSizing: "border-box" };
-  const card = (x) => ({ background: "rgba(30,41,59,.85)", borderRadius: 12, border: "1px solid #334155", ...x });
+  }, [search]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0f172a,#1e293b)", fontFamily: "'Sarabun', sans-serif", color: "#f8fafc" }}>
-      {toast && (
-        <div style={{ position: "fixed", top: 14, right: 14, zIndex: 9999, padding: "9px 18px", borderRadius: 9, background: toast.err ? "#ef4444" : "#22c55e", color: "#fff", fontWeight: 700, fontSize: 13 }}>
-          {toast.text}
-        </div>
-      )}
-
-      {showLogin && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#1e293b", borderRadius: 14, padding: 28, border: "1px solid #334155", minWidth: 300, textAlign: "center" }}>
-            <h3 style={{ margin: "0 0 16px" }}>เข้าระบบแอดมิน</h3>
-            <input type="password" value={passInput} onChange={e => setPassInput(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} style={{ ...inp, width: "100%", marginBottom: 8 }} />
-            {passErr && <p style={{ color: "#ef4444", margin: "0 0 8px", fontSize: 12 }}>{passErr}</p>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowLogin(false)} style={ibtn("#64748b")}>ยกเลิก</button>
-              <button onClick={login} style={ibtn("#3b82f6", { flex: 1, background: "#3b82f6", color: "#fff" })}>เข้าสู่ระบบ</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ background: "rgba(15,23,42,.95)", borderBottom: "1px solid #334155", padding: "10px 16px", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div style={{ minHeight: "100vh", background: "#0f172a", color: "#f8fafc", fontFamily: "sans-serif" }}>
+      {/* Header */}
+      <div style={{ background: "#1e293b", padding: "15px 20px", borderBottom: "1px solid #334155", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontWeight: 800 }}>ระบบเก็บเงินห้อง SMTE</div>
-            <div style={{ color: "#64748b", fontSize: 10 }}>{MEMBERS.length} สมาชิก · {WEEKS.length} สัปดาห์</div>
+            <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "bold" }}>ระบบเก็บเงินห้อง SMTE</h1>
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "#94a3b8" }}>จัดการข้อมูลการจ่ายเงิน 34 สัปดาห์</p>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setView("admin")} style={ibtn(view === "admin" ? "#3b82f6" : "#64748b")}>แผงควบคุม</button>
-            <button onClick={() => setView("member")} style={ibtn(view === "member" ? "#3b82f6" : "#64748b")}>สมาชิก</button>
-            {isAdmin ? <button onClick={() => setIsAdmin(false)} style={ibtn("#ef4444")}>ออก</button> : <button onClick={() => setShowLogin(true)} style={ibtn("#3b82f6")}>แอดมิน</button>}
+          <div style={{ display: "flex", gap: "10px" }}>
+             <button onClick={() => setIsAdmin(!isAdmin)} style={{ padding: "8px 16px", borderRadius: "8px", border: "none", background: isAdmin ? "#16a34a" : "#3b82f6", color: "#fff", cursor: "pointer", fontWeight: "bold" }}>
+              {isAdmin ? "🔓 แอดมิน" : "🔐 ทั่วไป"}
+            </button>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 20 }}>
-        {/* ส่วนแสดงสรุปยอด (เหมือนเดิม) */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 20 }}>
-          <div style={card({ padding: 15 })}>เก็บได้: <span style={{ color: "#22c55e", fontWeight: 800 }}>฿{totals.got.toLocaleString()}</span></div>
-          <div style={card({ padding: 15 })}>ค้างชำระ: <span style={{ color: "#ef4444", fontWeight: 800 }}>฿{totals.owed.toLocaleString()}</span></div>
+      {/* Main Content */}
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
+        <div style={{ marginBottom: "20px" }}>
+          <input 
+            type="text" 
+            placeholder="🔍 ค้นหาชื่อ หรือชื่อเล่น..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #334155", background: "#1e293b", color: "#fff" }}
+          />
         </div>
 
-        {view === "admin" ? (
-          <div>
-            <input placeholder="ค้นหา..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inp, width: "100%", marginBottom: 15 }} />
-            <div style={{ overflowX: "auto", ...card({}) }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: 10, textAlign: "left" }}>ชื่อ</th>
-                    {WEEKS.map(w => <th key={w} style={{ fontSize: 9 }}>{w}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(m => (
-                    <tr key={m.id} style={{ borderTop: "1px solid #334155" }}>
-                      <td style={{ padding: 10, fontSize: 12 }}>{m.name} ({m.nickname})</td>
-                      {WEEKS.map(w => (
-                        <td key={w} onClick={() => toggle(m.id, w)} style={{ textAlign: "center", cursor: isAdmin ? "pointer" : "default", background: BG[pay[m.id]?.[w] || "u"], color: COLOR[pay[m.id]?.[w] || "u"], fontWeight: "bold" }}>
-                          {ICON[pay[m.id]?.[w] || "u"]}
+        <div style={{ background: "#1e293b", borderRadius: "15px", overflow: "hidden", border: "1px solid #334155" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  <th style={{ padding: "12px", textAlign: "left", position: "sticky", left: 0, background: "#0f172a", zIndex: 5 }}>สมาชิก</th>
+                  {WEEKS.map(w => <th key={w} style={{ padding: "8px", minWidth: "30px", fontSize: "0.7rem" }}>{w}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(m => (
+                  <tr key={m.id} style={{ borderBottom: "1px solid #334155" }}>
+                    <td style={{ padding: "10px 15px", position: "sticky", left: 0, background: "#1e293b", zIndex: 4, whiteSpace: "nowrap" }}>
+                      <div style={{ fontWeight: "bold" }}>{m.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{m.nickname} • {m.id}</div>
+                    </td>
+                    {WEEKS.map(w => {
+                      const s = pay[m.id]?.[w] || S.U;
+                      return (
+                        <td key={w} onClick={() => toggle(m.id, w)} style={{ 
+                          textAlign: "center", 
+                          cursor: isAdmin ? "pointer" : "default",
+                          background: BG[s],
+                          color: COLOR[s],
+                          border: "1px solid #334155",
+                          fontWeight: "bold",
+                          transition: "0.2s"
+                        }}>
+                          {ICON[s]}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {isAdmin && <button onClick={reset} style={{ ...ibtn("#ef4444"), marginTop: 20 }}>รีเซ็ตข้อมูลทั้งหมด</button>}
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          /* ส่วนตรวจสอบรายบุคคล (เหมือนเดิม) */
-          <div>
-            <input placeholder="ใส่ชื่อหรือรหัส..." value={search} onChange={e => { setSearch(e.target.value); setPicked(null); }} style={{ ...inp, width: "100%", marginBottom: 15 }} />
-            {pickedM ? (
-              <div style={card({ padding: 20 })}>
-                <h3>{pickedM.name} {pickedM.surname}</h3>
-                <p>ค้างชำระ: <span style={{ color: "#ef4444" }}>฿{pickedM.owed}</span></p>
-                <button onClick={() => setPicked(null)} style={ibtn("#3b82f6")}>กลับ</button>
-              </div>
-            ) : (
-              filtered.map(m => <div key={m.id} onClick={() => setPicked(m.id)} style={{ ...card({ padding: 10, marginBottom: 5 }), cursor: "pointer" }}>{m.name} ({m.nickname})</div>)
-            )}
-          </div>
-        )}
+        </div>
+        
+        <div style={{ marginTop: "20px", display: "flex", gap: "15px", fontSize: "0.8rem", color: "#94a3b8", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}><span style={{ width: "12px", height: "12px", background: BG.p, borderRadius: "2px" }}></span> ชำระแล้ว (10.-)</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}><span style={{ width: "12px", height: "12px", background: BG.l, borderRadius: "2px" }}></span> ค้างชำระ (15.-)</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}><span style={{ width: "12px", height: "12px", background: BG.e, borderRadius: "2px" }}></span> ยกเว้น</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}><span style={{ width: "12px", height: "12px", background: BG.u, borderRadius: "2px" }}></span> ยังไม่ถึงกำหนด</div>
+        </div>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700;800&display=swap');
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { height: 5px; }
-        ::-webkit-scrollbar-thumb { background: #334155; }
-      `}</style>
     </div>
   );
-}
+                      }
+                  
