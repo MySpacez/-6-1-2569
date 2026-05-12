@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 
 const MEMBERS = [
@@ -9,7 +11,7 @@ const MEMBERS = [
   { id: "52602", num: 6,  name: "น.ส. วลัยพรรณ",  surname: "จันทรานาค",       nickname: "ปริมมี่"   },
   { id: "52646", num: 7,  name: "นาย ปกรณ์วิชญ์", surname: "คันธามารัตน์",    nickname: "เป"        },
   { id: "52649", num: 8,  name: "น.ส. เมลาณี",    surname: "เฟื่องเพียร",      nickname: "แฅลร์"     },
-  { id: "52660", num: 9, name: "น.ส. ภีรดา",     surname: "โมจมสิน",         nickname: "แพร"       },
+  { id: "52660", num: 9,  name: "น.ส. ภีรดา",     surname: "โมจมสิน",         nickname: "แพร"       },
   { id: "52681", num: 10, name: "น.ส. นภัชพร",    surname: "บัวลอย",          nickname: "เนเน่"     },
   { id: "52728", num: 11, name: "น.ส. ศตพร",      surname: "สมหวาน",          nickname: "เจ้น"      },
   { id: "52732", num: 12, name: "น.ส. สิปโปทัย",  surname: "วงศ์สิทธิพิศาล",  nickname: "ออมสิน"    },
@@ -50,6 +52,7 @@ function freshPay() {
 }
 
 function loadPay() {
+  if (typeof window === "undefined") return freshPay();
   try {
     const d = JSON.parse(localStorage.getItem(KEY));
     if (d && d.key === KEY) return d.pay;
@@ -62,7 +65,7 @@ function savePay(pay) {
 }
 
 export default function App() {
-  const [pay, setPay]             = useState(loadPay);
+  const [pay, setPay]             = useState(freshPay); // เปลี่ยนเป็น freshPay ก่อนเพื่อเลี่ยง Error ตอน Build
   const [view, setView]           = useState("admin");
   const [isAdmin, setIsAdmin]     = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -72,7 +75,15 @@ export default function App() {
   const [picked, setPicked]       = useState(null);
   const [toast, setToast]         = useState(null);
 
-  useEffect(() => { savePay(pay); }, [pay]);
+  // ดึงข้อมูลจริงจาก LocalStorage หลัง Component โหลดเสร็จ
+  useEffect(() => {
+    const saved = loadPay();
+    setPay(saved);
+  }, []);
+
+  useEffect(() => { 
+    if (Object.keys(pay).length > 0) savePay(pay); 
+  }, [pay]);
 
   function notify(text, err) {
     setToast({ text, err });
@@ -136,14 +147,12 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0f172a,#1e293b)", fontFamily: "'Sarabun','Noto Sans Thai',sans-serif", color: "#f8fafc" }}>
 
-      {/* Toast */}
       {toast && (
         <div style={{ position: "fixed", top: 14, right: 14, zIndex: 9999, padding: "9px 18px", borderRadius: 9, background: toast.err ? "#ef4444" : "#22c55e", color: "#fff", fontWeight: 700, fontSize: 13, boxShadow: "0 4px 16px rgba(0,0,0,.4)" }}>
           {toast.text}
         </div>
       )}
 
-      {/* Login Modal */}
       {showLogin && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div style={{ background: "#1e293b", borderRadius: 14, padding: 28, border: "1px solid #334155", minWidth: 300, textAlign: "center" }}>
@@ -166,7 +175,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Bar */}
       <div style={{ background: "rgba(15,23,42,.95)", borderBottom: "1px solid #334155", padding: "0 16px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 54 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -195,8 +203,6 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "16px 12px" }}>
-
-        {/* Summary */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 14 }}>
           {[
             { icon: "👥", label: "สมาชิก",      val: MEMBERS.length,                  c: "#3b82f6" },
@@ -214,7 +220,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Legend */}
         <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
           {[
             { s: S.P, lbl: "ชำระแล้ว (฿10)" },
@@ -227,10 +232,8 @@ export default function App() {
               <span style={{ color: "#94a3b8" }}>{x.lbl}</span>
             </div>
           ))}
-          {isAdmin && <span style={{ color: "#fbbf24", fontSize: 12 }}>✏️ คลิกช่องเพื่อเปลี่ยนสถานะ</span>}
         </div>
 
-        {/* ── ADMIN VIEW ── */}
         {view === "admin" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -271,7 +274,6 @@ export default function App() {
                           <td key={w} style={{ padding: "2px 1px", textAlign: "center" }}>
                             <div
                               onClick={() => toggle(m.id, w)}
-                              title={`${m.nickname} สัปดาห์ ${w}: ${LABEL[s]}`}
                               style={{ width: 20, height: 20, borderRadius: 3, margin: "0 auto", background: BG[s], border: `1.5px solid ${COLOR[s]}55`, cursor: isAdmin ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: COLOR[s], userSelect: "none" }}>
                               {ICON[s]}
                             </div>
@@ -283,13 +285,9 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-            <p style={{ color: "#475569", fontSize: 11, marginTop: 8 }}>
-              {isAdmin ? "คลิกช่องเพื่อวนเปลี่ยน: ยังไม่ชำระ → ชำระแล้ว → ค้างชำระ+ปรับ → ยกเว้น → วนซ้ำ" : "🔐 กดปุ่มแอดมินที่มุมบนขวาเพื่อแก้ไขข้อมูล"}
-            </p>
           </div>
         )}
 
-        {/* ── MEMBER VIEW ── */}
         {view === "member" && (
           <div>
             <h2 style={{ margin: "0 0 12px", fontSize: 14 }}>👤 ตรวจสอบยอดชำระของตัวเอง</h2>
@@ -302,17 +300,11 @@ export default function App() {
 
             {search && !picked && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 8, marginBottom: 12 }}>
-                {filtered.length === 0 && <p style={{ color: "#64748b", fontSize: 13 }}>ไม่พบสมาชิก</p>}
                 {filtered.map(m => (
                   <div key={m.id} onClick={() => setPicked(m.id)}
-                    style={{ ...card({ padding: "12px 14px" }), cursor: "pointer" }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = "#3b82f6"}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = "#334155"}>
+                    style={{ ...card({ padding: "12px 14px" }), cursor: "pointer" }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{m.name} {m.surname}</div>
                     <div style={{ color: "#94a3b8", fontSize: 11 }}>"{m.nickname}" · {m.id}</div>
-                    <div style={{ marginTop: 8, fontWeight: 700, fontSize: 13, color: m.owed > 0 ? "#ef4444" : "#22c55e" }}>
-                      {m.owed > 0 ? `ค้างชำระ ฿${m.owed}` : "✓ ชำระครบแล้ว"}
-                    </div>
                   </div>
                 ))}
               </div>
@@ -324,69 +316,23 @@ export default function App() {
                   ← กลับ
                 </button>
                 <div style={{ ...card({ padding: 18, marginBottom: 12 }) }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
-                    <div>
-                      <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800 }}>{pickedM.name} {pickedM.surname}</h2>
-                      <p style={{ margin: 0, color: "#94a3b8", fontSize: 12 }}>"{pickedM.nickname}" · รหัส {pickedM.id}</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>ยอดค้างชำระ</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: pickedM.owed > 0 ? "#ef4444" : "#22c55e" }}>
-                        {pickedM.owed > 0 ? `฿${pickedM.owed}` : "✓ ชำระครบ"}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 12 }}>
-                    {[
-                      { lbl: "ชำระแล้ว",      v: pickedM.paid,   c: "#22c55e" },
-                      { lbl: "ค้างชำระ+ปรับ", v: pickedM.late,   c: "#ef4444" },
-                      { lbl: "ยกเว้น",         v: pickedM.exempt, c: "#3b82f6" },
-                      { lbl: "ยังไม่ชำระ",    v: pickedM.unpaid, c: "#94a3b8" },
-                    ].map((x, i) => (
-                      <div key={i} style={{ background: "#0f172a", borderRadius: 8, padding: 10, textAlign: "center" }}>
-                        <div style={{ fontSize: 19, fontWeight: 800, color: x.c }}>{x.v}</div>
-                        <div style={{ fontSize: 10, color: "#64748b" }}>{x.lbl}</div>
-                      </div>
-                    ))}
+                  <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800 }}>{pickedM.name} {pickedM.surname}</h2>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: pickedM.owed > 0 ? "#ef4444" : "#22c55e" }}>
+                    {pickedM.owed > 0 ? `ค้างชำระ ฿${pickedM.owed}` : "✓ ชำระครบ"}
                   </div>
                 </div>
-                <div style={{ ...card({ padding: 18 }) }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 13 }}>รายละเอียดแต่ละสัปดาห์</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(72px,1fr))", gap: 5 }}>
-                    {WEEKS.map(w => {
-                      const s = pay[pickedM.id]?.[w] || S.U;
-                      return (
-                        <div key={w} style={{ background: BG[s], border: `1.5px solid ${COLOR[s]}66`, borderRadius: 7, padding: "6px 4px", textAlign: "center" }}>
-                          <div style={{ fontSize: 9, color: "#64748b" }}>สัปดาห์ {w}</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: COLOR[s], marginTop: 2 }}>
-                            {s === S.P ? "✓ ฿10" : s === S.L ? "฿15" : s === S.E ? "ยกเว้น" : "-"}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!search && !picked && (
-              <div style={{ textAlign: "center", padding: "50px 20px", color: "#475569" }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🔍</div>
-                <p style={{ fontSize: 14 }}>พิมพ์ชื่อหรือรหัสเพื่อค้นหายอดชำระของคุณ</p>
-                <p style={{ fontSize: 12 }}>ดูได้อย่างเดียว ไม่สามารถแก้ไขข้อมูลได้</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      <style>{`
+      <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        button:hover { opacity: .82; }
       `}</style>
     </div>
   );
