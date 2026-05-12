@@ -98,15 +98,18 @@ export default function App() {
     }
   }
 
-  // --- จุดที่แก้ไข 2: รีเซ็ตข้อมูลใน Supabase ---
-  async function reset() {
-    if (!window.confirm("ล้างข้อมูลทั้งหมดในระบบออนไลน์? ข้อมูลจะหายไปสำหรับทุกคน")) return;
-    const { error } = await supabase.from('payments').delete().neq('status', 'none'); 
-    if (!error) {
-      setPay(freshPay());
-      notify("รีเซ็ตออนไลน์เรียบร้อย");
-    }
+  // ค้นหาฟังก์ชัน reset เดิมแล้วแก้เป็นแบบนี้:
+async function reset() {
+  if (!isAdmin) return; // ถ้าไม่ใช่แอดมิน ไม่ต้องทำอะไรต่อ
+  
+  if (!window.confirm("ล้างข้อมูลทั้งหมดในระบบออนไลน์? ข้อมูลจะหายไปสำหรับทุกคน")) return;
+  const { error } = await supabase.from('payments').delete().neq('status', 'none'); 
+  if (!error) {
+    setPay(freshPay());
+    notify("รีเซ็ตออนไลน์เรียบร้อย");
   }
+}
+
 
   // --- จุดที่แก้ไข 3: บันทึกการเปลี่ยนแปลงลง Supabase ทันทีที่คลิก ---
   async function toggle(id, week) {
@@ -210,7 +213,10 @@ export default function App() {
               ? <button onClick={() => { setIsAdmin(false); notify("ออกจากระบบแล้ว", true); }} style={ibtn("#ef4444")}>🔓 ออก</button>
               : <button onClick={() => setShowLogin(true)} style={ibtn("#3b82f6")}>🔐 แอดมิน</button>
             }
-            <button onClick={reset} style={ibtn("#f59e0b")}>🔄 รีเซ็ต</button>
+            {isAdmin && (
+  <button onClick={reset} style={ibtn("#f59e0b")}>🔄 รีเซ็ต</button>
+)}
+
           </div>
         </div>
       </div>
