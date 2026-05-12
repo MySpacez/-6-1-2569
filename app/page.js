@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// --- ส่วนการตั้งค่า Supabase ---
+const SUPABASE_URL = "https://tddhhgzooggoxgejstyg.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkZGhoZ3pvb2dnb3hnZWpzdHlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Nzk4MzAsImV4cCI6MjA5NDE1NTgzMH0.0CZE6QpcJ2t4o62W-Io-B7RN5jraAcPcphwNtl1Qi_Q";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const MEMBERS = [
   { id: "52575", num: 1,  name: "น.ส. สุทิศา",    surname: "เกื้อคีรี",        nickname: "โมจิ"      },
@@ -33,7 +39,6 @@ const MEMBERS = [
 ];
 
 const WEEKS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
-const KEY = "rfs_v7";
 
 const S = { U: "u", P: "p", L: "l", E: "e" };
 const CYCLE = { u: "p", p: "l", l: "e", e: "u" };
@@ -51,21 +56,8 @@ function freshPay() {
   return p;
 }
 
-function loadPay() {
-  if (typeof window === "undefined") return freshPay();
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY));
-    if (d && d.key === KEY) return d.pay;
-  } catch {}
-  return freshPay();
-}
-
-function savePay(pay) {
-  try { localStorage.setItem(KEY, JSON.stringify({ key: KEY, pay })); } catch {}
-}
-
 export default function App() {
-  const [pay, setPay]             = useState(freshPay); // เปลี่ยนเป็น freshPay ก่อนเพื่อเลี่ยง Error ตอน Build
+  const [pay, setPay]             = useState(freshPay);
   const [view, setView]           = useState("admin");
   const [isAdmin, setIsAdmin]     = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -75,15 +67,22 @@ export default function App() {
   const [picked, setPicked]       = useState(null);
   const [toast, setToast]         = useState(null);
 
-  // ดึงข้อมูลจริงจาก LocalStorage หลัง Component โหลดเสร็จ
+  // --- จุดที่แก้ไข 1: ดึงข้อมูลจาก Supabase แทน LocalStorage ---
   useEffect(() => {
-    const saved = loadPay();
-    setPay(saved);
+    async function fetchData() {
+      const { data, error } = await supabase.from('payments').select('*');
+      if (data) {
+        const formatted = freshPay();
+        data.forEach(item => {
+          if (formatted[item.student_id]) {
+            formatted[item.student_id][item.week_no] = item.status;
+          }
+        });
+        setPay(formatted);
+      }
+    }
+    fetchData();
   }, []);
-
-  useEffect(() => { 
-    if (Object.keys(pay).length > 0) savePay(pay); 
-  }, [pay]);
 
   function notify(text, err) {
     setToast({ text, err });
@@ -99,20 +98,34 @@ export default function App() {
     }
   }
 
-  function reset() {
-    if (!window.confirm("ล้างข้อมูลทั้งหมดและเริ่มใหม่?\nข้อมูลการชำระเงินจะหายทั้งหมด")) return;
-    const f = freshPay();
-    setPay(f);
-    savePay(f);
-    notify("รีเซ็ตเรียบร้อย");
+  // --- จุดที่แก้ไข 2: รีเซ็ตข้อมูลใน Supabase ---
+  async function reset() {
+    if (!window.confirm("ล้างข้อมูลทั้งหมดในระบบออนไลน์? ข้อมูลจะหายไปสำหรับทุกคน")) return;
+    const { error } = await supabase.from('payments').delete().neq('status', 'none'); 
+    if (!error) {
+      setPay(freshPay());
+      notify("รีเซ็ตออนไลน์เรียบร้อย");
+    }
   }
 
-  function toggle(id, week) {
+  // --- จุดที่แก้ไข 3: บันทึกการเปลี่ยนแปลงลง Supabase ทันทีที่คลิก ---
+  async function toggle(id, week) {
     if (!isAdmin) return;
+    const currentStatus = pay[id]?.[week] || S.U;
+    const nextStatus = CYCLE[currentStatus];
+
+    // อัปเดต UI ทันทีเพื่อให้รู้สึกลื่นไหล
     setPay(prev => ({
       ...prev,
-      [id]: { ...prev[id], [week]: CYCLE[prev[id]?.[week] || S.U] }
+      [id]: { ...prev[id], [week]: nextStatus }
     }));
+
+    // บันทึกลง Supabase
+    await supabase.from('payments').upsert({
+      student_id: id,
+      week_no: week,
+      status: nextStatus
+    }, { onConflict: 'student_id,week_no' });
   }
 
   const stats = useMemo(() => MEMBERS.map(m => {
@@ -336,4 +349,5 @@ export default function App() {
       `}</style>
     </div>
   );
-}
+            }
+          
