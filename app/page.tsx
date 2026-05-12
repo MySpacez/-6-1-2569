@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 
 const MEMBERS = [
@@ -388,6 +390,6 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         button:hover { opacity: .82; }
       `}</style>
-    </div>
+                </div>
   );
 }
