@@ -508,7 +508,7 @@ export default function App() {
             )}
 
             <input
-              placeholder="🔍 พิมพ์ชื่อ นามสกุล ชื่อเล่น หรือรหัสนักศึกษา..."
+              placeholder="🔍 พิมพ์ชื่อ นามสกุล ชื่อเล่น หรือรหัสนักเรียน..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPicked(null); }}
               style={{ ...inp, width: "100%", marginBottom: 12 }}
