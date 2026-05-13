@@ -55,7 +55,7 @@ function freshPay() {
   return p;
 }
 
-
+function App() {
   const [pay, setPay]                   = useState(freshPay);
   const [activeWeek, setActiveWeek]     = useState(null);   // สัปดาห์ปัจจุบัน
   const [view, setView]                 = useState("admin");
