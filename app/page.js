@@ -68,7 +68,6 @@ export default function App() {
   const [picked, setPicked]             = useState(null);
   const [toast, setToast]               = useState(null);
   const [loading, setLoading]           = useState(true);
-
   // ── โหลดข้อมูลจาก Supabase ──────────────────────────────────────────────
   useEffect(() => {
     async function fetchAll() {
