@@ -602,7 +602,7 @@ export default function App() {
               </div>
             )}
           </div>
-        )}
+        )
       </div>
 
       <style jsx global>{`
@@ -617,6 +617,3 @@ export default function App() {
     </div>
   );
 }
-
-
-                      
